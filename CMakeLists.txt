@@ -39,32 +39,33 @@ if(INDICATORS_SAMPLES)
   add_subdirectory(samples)
 endif()
 
+
+configure_package_config_file(indicatorsConfig.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/indicatorsConfig.cmake
+  INSTALL_DESTINATION share/feelpp/feel/cmake/modules )
+write_basic_package_version_file(indicatorsConfigVersion.cmake
+  COMPATIBILITY AnyNewerVersion)
+
+configure_file(indicators.pc.in indicators.pc @ONLY)
+
+install(TARGETS indicators EXPORT indicatorsTargets)
+install(EXPORT indicatorsTargets
+  FILE indicatorsTargets.cmake
+  NAMESPACE indicators::
+  DESTINATION share/feelpp/feel/cmake/modules )
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/indicatorsConfig.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/indicatorsConfigVersion.cmake
+  DESTINATION share/feelpp/feel/cmake/modules )
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/indicators.pc
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/indicators
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/feelpp
+  USE_SOURCE_PERMISSIONS
+  PATTERN "*.hpp")
+install(FILES LICENSE LICENSE.termcolor
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/licenses/indicators)
+
 if(NOT INDICATORS_SUBPROJECT)
-  configure_package_config_file(indicatorsConfig.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/indicatorsConfig.cmake
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/indicators)
-  write_basic_package_version_file(indicatorsConfigVersion.cmake
-                                   COMPATIBILITY AnyNewerVersion)
-
-  configure_file(indicators.pc.in indicators.pc @ONLY)
-
-  install(TARGETS indicators EXPORT indicatorsTargets)
-  install(EXPORT indicatorsTargets
-          FILE indicatorsTargets.cmake
-          NAMESPACE indicators::
-          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/indicators)
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/indicatorsConfig.cmake
-                ${CMAKE_CURRENT_BINARY_DIR}/indicatorsConfigVersion.cmake
-          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/indicators)
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/indicators.pc
-          DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
-  install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/indicators
-          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-          USE_SOURCE_PERMISSIONS
-          PATTERN "*.hpp")
-  install(FILES LICENSE LICENSE.termcolor
-          DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/licenses/indicators)
-
   if(EXISTS "${PROJECT_SOURCE_DIR}/.gitignore")
     # Simple glob to regex conversion (.gitignore => CPACK_SOURCE_IGNORE_FILES)
     file(READ ".gitignore" DOT_GITIGNORE)
