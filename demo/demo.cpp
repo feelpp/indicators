@@ -1,23 +1,27 @@
+#include <indicators/cursor_control.hpp>
 #include <indicators/progress_bar.hpp>
 #include <indicators/progress_spinner.hpp>
 #include <vector>
 
 int main() {
+  using namespace indicators;
 
   // Hide cursor
-  std::cout << "\e[?25l";
-  using namespace indicators;
+  show_console_cursor(false);
+
   {
     //
     // PROGRESS BAR 1
     //
-    indicators::ProgressBar p{option::BarWidth{50},
-                              option::Start{"["},
-                              option::Fill{"■"},
-                              option::Lead{"■"},
-                              option::Remainder{" "},
-                              option::End{" ]"},
-                              option::ForegroundColor{indicators::Color::yellow}};
+    indicators::ProgressBar p{
+        option::BarWidth{50},
+        option::Start{"["},
+        option::Fill{"■"},
+        option::Lead{"■"},
+        option::Remainder{" "},
+        option::End{" ]"},
+        option::ForegroundColor{indicators::Color::yellow},
+        option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
 
     std::atomic<size_t> index{0};
     std::vector<std::string> status_text = {"Rocket.exe is not responding",
@@ -49,7 +53,7 @@ int main() {
     // PROGRESS BAR 2
     //
     indicators::ProgressBar p;
-    p.set_option(option::BarWidth{40});
+    p.set_option(option::BarWidth{0});
     p.set_option(option::PrefixText{"Reading package list... "});
     p.set_option(option::Start{""});
     p.set_option(option::Fill{""});
@@ -58,6 +62,8 @@ int main() {
     p.set_option(option::End{""});
     p.set_option(option::ForegroundColor{indicators::Color::white});
     p.set_option(option::ShowPercentage{false});
+    p.set_option(
+        option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}});
     auto job = [&p]() {
       while (true) {
         p.set_option(
@@ -88,6 +94,8 @@ int main() {
     p.set_option(option::End{"]"});
     p.set_option(option::PostfixText{"Getting started"});
     p.set_option(option::ForegroundColor{indicators::Color::green});
+    p.set_option(
+        option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}});
     auto job = [&p]() {
       while (true) {
         auto ticks = p.current();
@@ -124,6 +132,8 @@ int main() {
     p4.set_option(option::ForegroundColor{indicators::Color::cyan});
     p4.set_option(option::PostfixText{"Restoring system state"});
     p4.set_option(option::ShowPercentage{false});
+    p4.set_option(
+        option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}});
     std::atomic<size_t> index4{0};
     auto job4 = [&p4, &index4, &lead_spinner]() {
       while (true) {
@@ -134,6 +144,7 @@ int main() {
           std::cout << std::endl;
           p4.set_option(option::ForegroundColor{indicators::Color::red});
           p4.set_option(option::PrefixText{"{ ERROR }"});
+          p4.set_option(option::BarWidth{0});
           p4.set_option(option::Start{});
           p4.set_option(option::Fill{});
           p4.set_option(option::Lead{});
@@ -156,23 +167,22 @@ int main() {
       //
       // GOING BACKWARDS
       //
-      indicators::ProgressBar p{option::BarWidth{50},
-                                option::Start{"["},
-                                option::Fill{"■"},
-                                option::Lead{"■"},
-                                option::Remainder{"-"},
-                                option::End{"]"},
-                                option::ForegroundColor{indicators::Color::white},
-                                option::PostfixText{"Reverting system restore"}};
-      p.set_progress(100); // TODO backwards as an option?
-      std::atomic<size_t> progress{100};
-      auto job = [&p, &progress]() {
+      indicators::ProgressBar p{
+          option::BarWidth{50},
+          option::ProgressType{ProgressType::decremental},
+          option::Start{"["},
+          option::Fill{"■"},
+          option::Lead{"■"},
+          option::Remainder{"-"},
+          option::End{"]"},
+          option::ForegroundColor{indicators::Color::white},
+          option::PostfixText{"Reverting system restore"},
+          option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
+      auto job = [&p]() {
         while (true) {
-          progress -= 1;
-          p.set_progress(progress);
-          if (progress == 0) {
+          p.tick();
+          if (p.is_completed()) {
             p.set_option(option::PostfixText{"Revert complete!"});
-            p.mark_as_completed();
             break;
           }
           std::this_thread::sleep_for(std::chrono::milliseconds(60));
@@ -190,7 +200,8 @@ int main() {
     indicators::ProgressSpinner p{
         option::PrefixText{""}, option::PostfixText{"Checking credentials"},
         option::ForegroundColor{indicators::Color::yellow},
-        option::SpinnerStates{std::vector<std::string>{"⠈", "⠐", "⠠", "⢀", "⡀", "⠄", "⠂", "⠁"}}};
+        option::SpinnerStates{std::vector<std::string>{"⠈", "⠐", "⠠", "⢀", "⡀", "⠄", "⠂", "⠁"}},
+        option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
 
     auto job = [&p]() {
       while (true) {
@@ -217,9 +228,12 @@ int main() {
     // PROGRESS BAR 6
     //
     indicators::ProgressSpinner p{
-        option::PrefixText{" - "}, option::PostfixText{"Searching for the Moon"},
-        option::ForegroundColor{indicators::Color::white}, option::ShowPercentage{false},
-        option::SpinnerStates{std::vector<std::string>{"▖", "▘", "▝", "▗"}}};
+        option::PrefixText{" - "},
+        option::PostfixText{"Searching for the Moon"},
+        option::ForegroundColor{indicators::Color::white},
+        option::ShowPercentage{false},
+        option::SpinnerStates{std::vector<std::string>{"▖", "▘", "▝", "▗"}},
+        option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
     auto job = [&p]() {
       while (true) {
         auto current = p.current();
@@ -255,15 +269,17 @@ int main() {
           //
           // NESTED PROGRESS BAR
           //
-          indicators::ProgressBar p2{option::BarWidth{30},
-                                     option::PrefixText{" - "},
-                                     option::Start{"🌎"},
-                                     option::Fill{"·"},
-                                     option::Lead{"🚀"},
-                                     option::Remainder{" "},
-                                     option::End{"🌑"},
-                                     option::PostfixText{"Achieved low-Earth orbit"},
-                                     option::ForegroundColor{indicators::Color::white}};
+          indicators::ProgressBar p2{
+              option::BarWidth{30},
+              option::PrefixText{" - "},
+              option::Start{"🌎"},
+              option::Fill{"·"},
+              option::Lead{"🚀"},
+              option::Remainder{" "},
+              option::End{"🌑"},
+              option::PostfixText{"Achieved low-Earth orbit"},
+              option::ForegroundColor{indicators::Color::white},
+              option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
           std::vector<std::string> ship_trail{"⠁", "⠂", "⠄", "⡀", "⢀", "⠠", "⠐", "⠈"};
           std::atomic<int> ship_trail_index{0};
           auto job2 = [&p2, &ship_trail_index, &ship_trail]() {
@@ -301,7 +317,7 @@ int main() {
   }
 
   // Show cursor
-  std::cout << "\e[?25h";
+  show_console_cursor(true);
 
   return 0;
 }

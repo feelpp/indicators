@@ -12,39 +12,41 @@
   <a href="https://github.com/p-ranav/indicators/blob/master/LICENSE">
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="license"/>
   </a>
-  <img src="https://img.shields.io/badge/version-1.8-blue.svg?cacheSeconds=2592000" alt="version"/>
+  <img src="https://img.shields.io/badge/version-1.9-blue.svg?cacheSeconds=2592000" alt="version"/>
 </p>
+
 
 <p align="center">
   <img src="img/demo.gif"/> 
 </p>
 
-# Highlights
+## Highlights
 
 * Thread-safe progress bars and spinners
-* Header-only library. Grab a copy of `include/indicators`
+* Header-only library. Grab a copy of `include/indicators`. 
+* Single-header version in `single_include/indicators`.
 * Source for the above GIF can be found [here](demo/demo.cpp)
 * MIT License
 
-```bash
-git clone https://github.com/p-ranav/indicators
-cd indicators
-mkdir build && cd build
-cmake -DINDICATORS_SAMPLES=ON -DINDICATORS_DEMO=ON ..
-make
-```
+## Table of Contents
 
-# Table of Contents
+*    Supported Indicators
+     *    [Basic Progress Bar](#basic-progress-bar)
+     *    [Indeterminate Progress Bar](#indeterminate-progress-bar)
+     *    [Block Progress Bar](#block-progress-bar)
+     *    [Multi Progress](#multiprogress)
+     *    [Dynamic Progress](#dynamicprogress)
+     *    [Progress Spinner](#progress-spinner)
+*    Additional Samples
+     *    [Decremental Progress](#decremental-progress)
+     *    [Working with Iterables](#working-with-iterables)
+     *    [Unicode Support](#unicode-support)
+*    [Building Samples](#building-samples)
+*    [Generating Single Header](#generating-single-header)
+*    [Contributing](#contributing)
+*    [License](#license)
 
-* [Progress Bar](#progress-bar)
-* [Block Progress Bar](#block-progress-bar)
-* [Multi Progress](#multiprogress)
-* [Dynamic Progress](#dynamicprogress)
-* [Progress Spinner](#progress-spinner)
-* [Contributing](#contributing)
-* [License](#license)
-
-# Progress bar
+## Basic Progress bar
 
 To introduce a progress bar in your application, include `indicators/progress_bar.hpp` and create a `ProgressBar` object. Here's the general structure of a progress bar:
 
@@ -53,11 +55,11 @@ To introduce a progress bar in your application, include `indicators/progress_ba
          ^^^^^^^^^^^^^ Bar Width ^^^^^^^^^^^^^^^   
 ```
 
-The amount of progress in ProgressBar is maintained as a size_t in range `[0, 100]`. When progress reaches 100, the progression is complete. 
+The amount of progress in ProgressBar is maintained as a `size_t` in range `[0, 100]`. When progress reaches 100, the progression is complete. 
 
 From application-level code, there are two ways in which you can update this progress:
 
-## Update progress using `bar.tick()`
+### Update progress using `bar.tick()`
 
 You can update the progress bar using `bar.tick()` which increments progress by exactly `1%`.
 
@@ -80,7 +82,8 @@ int main() {
     option::Remainder{" "},
     option::End{"]"},
     option::PostfixText{"Extracting Archive"},
-    option::ForegroundColor{Color::green}
+    option::ForegroundColor{Color::green},
+    option::FontStyles{std::vector<FontStyle>{FontStyle::bold}}
   };
   
   // Update bar state
@@ -97,7 +100,7 @@ int main() {
 
 The above code will print a progress bar that goes from 0 to 100% at the rate of 1% every 100 ms.
 
-## Updating progress using `bar.set_progress(value)`
+### Updating progress using `bar.set_progress(value)`
 
 If you'd rather control progress of the bar in discrete steps, consider using `bar.set_progress(value)`. Example:
 
@@ -108,14 +111,16 @@ If you'd rather control progress of the bar in discrete steps, consider using `b
 
 ```cpp
 #include <chrono>
+#include <indicators/cursor_control.hpp>
 #include <indicators/progress_bar.hpp>
 #include <thread>
 
 int main() {
+  using namespace indicators;
 
   // Hide cursor
-  std::cout << "\e[?25l";
-  using namespace indicators;
+  show_console_cursor(false);
+
   ProgressBar bar{
     option::BarWidth{50},
     option::Start{"["},
@@ -124,7 +129,8 @@ int main() {
     option::Remainder{"-"},
     option::End{" ]"},
     option::PostfixText{"Loading dependency 1/4"},
-    option::ForegroundColor{Color::cyan}  
+    option::ForegroundColor{Color::cyan},
+    option::FontStyles{std::vector<FontStyle>{FontStyle::bold}}
   };
 
   // Update bar state
@@ -151,16 +157,14 @@ int main() {
 
   bar.set_progress(100); // all done
 
-  bar.mark_as_completed();
-
   // Show cursor
-  std::cout << "\e[?25h";  
+  show_console_cursor(true);
 
   return 0;
 }
 ```
 
-## Showing Time Elapsed/Remaining
+### Showing Time Elapsed/Remaining
 
 All progress bars and spinners in `indicators` support showing time elapsed and time remaining. Inspired by python's [tqdm](https://github.com/tqdm/tqdm) module, the format of this meter is `[{elapsed}<{remaining}]`:
 
@@ -170,11 +174,16 @@ All progress bars and spinners in `indicators` support showing time elapsed and 
 
 ```cpp
 #include <chrono>
+#include <indicators/cursor_control.hpp>
 #include <indicators/progress_bar.hpp>
 #include <thread>
 
 int main() {
   using namespace indicators;
+
+  // Hide cursor
+  show_console_cursor(false);
+
   indicators::ProgressBar bar{
     option::BarWidth{50},
     option::Start{" ["},
@@ -185,7 +194,8 @@ int main() {
     option::PrefixText{"Training Gaze Network 👀"},
     option::ForegroundColor{Color::yellow},
     option::ShowElapsedTime{true},
-    option::ShowRemainingTime{true}
+    option::ShowRemainingTime{true},
+    option::FontStyles{std::vector<FontStyle>{FontStyle::bold}}
   };
 
   // Update bar state
@@ -197,13 +207,68 @@ int main() {
   }
 
   // Show cursor
-  std::cout << "\e[?25h";  
+  show_console_cursor(true);
 
   return 0;
 }
 ```
 
-# Block Progress Bar
+## Indeterminate Progress Bar
+
+You might have a use-case for a progress bar where the maximum amount of progress is unknown, e.g., you're downloading from a remote server that isn't advertising the total bytes. 
+
+Use an `indicators::IndeterminateProgressBar` for such cases. An `IndeterminateProgressBar` is similar to a regular progress bar except the total amount to progress towards is unknown. Ticking on this progress bar will happily run forever. 
+
+When you know progress is complete, simply call `bar.mark_as_completed()`. 
+
+<p align="center">
+  <img src="img/indeterminate_progress_bar.gif"/>  
+</p>
+
+```cpp
+#include <chrono>
+#include <indicators/indeterminate_progress_bar.hpp>
+#include <indicators/cursor_control.hpp>
+#include <indicators/termcolor.hpp>
+#include <thread>
+
+int main() {
+  indicators::IndeterminateProgressBar bar{
+      indicators::option::BarWidth{40},
+      indicators::option::Start{"["},
+      indicators::option::Fill{"·"},
+      indicators::option::Lead{"<==>"},
+      indicators::option::End{"]"},
+      indicators::option::PostfixText{"Checking for Updates"},
+      indicators::option::ForegroundColor{indicators::Color::yellow},
+      indicators::option::FontStyles{
+          std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}
+  };
+
+  indicators::show_console_cursor(false);
+
+  auto job = [&bar]() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+    bar.mark_as_completed();
+    std::cout << termcolor::bold << termcolor::green 
+        << "System is up to date!\n" << termcolor::reset;
+  };
+  std::thread job_completion_thread(job);
+
+  // Update bar state
+  while (!bar.is_completed()) {
+    bar.tick();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+
+  job_completion_thread.join();
+  
+  indicators::show_console_cursor(true);  
+  return 0;
+}
+```
+
+## Block Progress Bar
 
 Are you in need of a smooth block progress bar using [unicode block elements](https://en.wikipedia.org/wiki/Block_Elements)? Use `BlockProgressBar` instead of `ProgressBar`. Thanks to [this blog post](https://mike42.me/blog/2018-06-make-better-cli-progress-bars-with-unicode-block-characters) for making `BlockProgressBar` an easy addition to the library. 
 
@@ -218,15 +283,17 @@ Are you in need of a smooth block progress bar using [unicode block elements](ht
 
 int main() {
 
-  // Hide cursor
-  std::cout << "\e[?25l";
   using namespace indicators;
+
+  // Hide cursor
+  show_console_cursor(false);
 
   BlockProgressBar bar{
     option::BarWidth{80},
     option::Start{"["},
     option::End{"]"},
-    option::ForegroundColor{Color::white}  
+    option::ForegroundColor{Color::white}  ,
+    option::FontStyles{std::vector<FontStyle>{FontStyle::bold}}
   };
   
   // Update bar state
@@ -240,13 +307,13 @@ int main() {
   }
 
   // Show cursor
-  std::cout << "\e[?25h";  
+  show_console_cursor(true);
 
   return 0;
 }
 ```
 
-# MultiProgress
+## MultiProgress
 
 `indicators` supports management of multiple progress bars with the `MultiProgress` class template. 
 
@@ -277,7 +344,8 @@ int main() {
     option::ForegroundColor{Color::yellow},
     option::ShowElapsedTime{true},
     option::ShowRemainingTime{true},
-    option::PrefixText{"Progress Bar #1 "}
+    option::PrefixText{"Progress Bar #1 "},
+    option::FontStyles{std::vector<FontStyle>{FontStyle::bold}}
   };
 
   // Configure second progress bar
@@ -292,7 +360,8 @@ int main() {
     option::ForegroundColor{Color::cyan},
     option::ShowElapsedTime{true},
     option::ShowRemainingTime{true},
-    option::PrefixText{"Progress Bar #2 "}
+    option::PrefixText{"Progress Bar #2 "},
+    option::FontStyles{std::vector<FontStyle>{FontStyle::bold}}
   };
   
   // Configure third progress bar
@@ -306,7 +375,8 @@ int main() {
     option::ForegroundColor{Color::red},
     option::ShowElapsedTime{true},
     option::ShowRemainingTime{true},
-    option::PrefixText{"Progress Bar #3 "}
+    option::PrefixText{"Progress Bar #3 "},
+    option::FontStyles{std::vector<FontStyle>{FontStyle::bold}}
   };
 
   // Construct MultiProgress object
@@ -353,9 +423,11 @@ int main() {
 }
 ```
 
-# DynamicProgress
+## DynamicProgress
 
-`DynamicProgress` is a container class, similar to `MultiProgress`, for managing multiple progress bars. As the name suggests, with `DynamicProgress`, you can dynamically add new progress bars. Simply call `bars.push_back`. 
+`DynamicProgress` is a container class, similar to `MultiProgress`, for managing multiple progress bars. As the name suggests, with `DynamicProgress`, you can dynamically add new progress bars. 
+
+To add new progress bars, call `bars.push_back(new_bar)`. This call will return the index of the appended bar. You can then refer to this bar with the indexing operator, e.g., `bars[4].set_progress(55)`.  
 
 Use this class if you don't know the number of progress bars at compile time.
 
@@ -508,7 +580,7 @@ In the above code, notice the option `bars.set_option(option::HideBarWhenComplet
   <img src="img/dynamic_progress_bar_hide_completed.gif"/>  
 </p>
 
-# Progress Spinner
+## Progress Spinner
 
 To introduce a progress spinner in your application, include `indicators/progress_spinner.hpp` and create a `ProgressSpinner` object. Here's the general structure of a progress spinner:
 
@@ -530,7 +602,8 @@ int main() {
   indicators::ProgressSpinner spinner{
     option::PostfixText{"Checking credentials"},
     option::ForegroundColor{Color::yellow},
-    option::SpinnerStates{std::vector<std::string>{"⠈", "⠐", "⠠", "⢀", "⡀", "⠄", "⠂", "⠁"}}
+    option::SpinnerStates{std::vector<std::string>{"⠈", "⠐", "⠠", "⢀", "⡀", "⠄", "⠂", "⠁"}},
+    option::FontStyles{std::vector<FontStyle>{FontStyle::bold}}
   };
  
   // Update spinner state
@@ -554,6 +627,327 @@ int main() {
 
   return 0;
 }
+```
+
+## Decremental Progress
+
+`indicators` allows you to easily control the progress direction, i.e., incremental or decremental progress by using  `option::ProgressType`. To program a countdown progress bar, use `option::ProgressType::decremental`
+
+<p align="center">
+  <img src="img/progress_bar_countdown.gif"/>  
+</p>
+
+```cpp
+#include <chrono>
+#include <indicators/progress_bar.hpp>
+#include <thread>
+using namespace indicators;
+
+int main() {
+
+  ProgressBar bar{option::BarWidth{50},
+                  option::ProgressType{ProgressType::decremental},
+                  option::Start{"["},
+                  option::Fill{"■"},
+                  option::Lead{"■"},
+                  option::Remainder{"-"},
+                  option::End{"]"},
+                  option::PostfixText{"Reverting System Restore"},
+                  option::ForegroundColor{Color::yellow},
+                  option::FontStyles{std::vector<FontStyle>{FontStyle::bold}}};
+
+  // Update bar state
+  while (true) {
+    bar.tick();
+    if (bar.is_completed())
+      break;
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+
+  std::cout << termcolor::bold << termcolor::white
+            << "Task Failed Successfully\n" << termcolor::reset;
+
+  return 0;
+}
+```
+
+## Working with Iterables
+
+If you'd like to use progress bars to indicate progress while iterating over iterables, e.g., a list of numbers, this
+can be achieved by using the `option::MaxProgress`:
+
+<p align="center">
+  <img src="img/block_progress_bar_iterable.gif"/>  
+</p>
+
+```cpp
+#include <chrono>
+#include <indicators/block_progress_bar.hpp>
+#include <indicators/cursor_control.hpp>
+#include <thread>
+
+int main() {
+
+  // Hide cursor
+  indicators::show_console_cursor(false);
+
+  // Random list of numbers
+  std::vector<size_t> numbers;
+  for (size_t i = 0; i < 1259438; ++i) {
+      numbers.push_back(i);
+  }
+
+  using namespace indicators;
+  BlockProgressBar bar{
+    option::BarWidth{80},
+    option::ForegroundColor{Color::white},
+    option::FontStyles{
+          std::vector<FontStyle>{FontStyle::bold}},
+    option::MaxProgress{numbers.size()}
+  };
+
+  std::cout << "Iterating over a list of numbers (size = "
+            << numbers.size() << ")\n";
+
+  std::vector<size_t> result;
+  for (size_t i = 0; i < numbers.size(); ++i) {
+
+    // Perform some computation
+    result.push_back(numbers[i] * numbers[i]);
+
+    // Show iteration as postfix text
+    bar.set_option(option::PostfixText{
+      std::to_string(i) + "/" + std::to_string(numbers.size())
+    });
+
+    // update progress bar
+    bar.tick();
+  }
+
+  bar.mark_as_completed();
+
+  // Show cursor
+  indicators::show_console_cursor(true);
+
+  return 0;
+}
+```
+
+## Unicode Support
+
+`indicators` supports multi-byte unicode characters in progress bars. 
+
+If the `option::BarWidth` is set, the library aims to respect this setting. When filling the bar, if the next `Fill` string has a display width that would exceed the bar width, then the library will fill the remainder of the bar with `' '` space characters instead. 
+
+See below an example of some progress bars, each with a bar width of 50, displaying different unicode characters:
+
+<p align="center">
+  <img src="img/unicode.gif"/>  
+</p>
+
+```cpp
+#include <chrono>
+#include <indicators/progress_bar.hpp>
+#include <indicators/indeterminate_progress_bar.hpp>
+#include <indicators/cursor_control.hpp>
+#include <thread>
+
+int main() {
+
+    indicators::show_console_cursor(false);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+    {
+        // Plain old ASCII
+        indicators::ProgressBar bar{
+            indicators::option::BarWidth{50},
+            indicators::option::Start{"["},
+            indicators::option::Fill{"="},
+            indicators::option::Lead{">"},
+            indicators::option::Remainder{" "},
+            indicators::option::End{" ]"},
+            indicators::option::PostfixText{"Plain-old ASCII"},
+            indicators::option::ForegroundColor{indicators::Color::green},
+            indicators::option::FontStyles{
+                std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}
+        };
+
+        // Update bar state
+        while (true) {
+            bar.tick();
+            if (bar.is_completed())
+            break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    }
+
+    {
+        // Unicode
+        indicators::ProgressBar bar{
+            indicators::option::BarWidth{50},
+            indicators::option::Start{"["},
+            indicators::option::Fill{"驚くばかり"},
+            indicators::option::Lead{">"},
+            indicators::option::Remainder{" "},
+            indicators::option::End{" ]"},
+            indicators::option::PostfixText{"Japanese"},
+            indicators::option::ForegroundColor{indicators::Color::yellow},
+            indicators::option::FontStyles{
+                std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}
+        };
+
+        // Update bar state
+        while (true) {
+            bar.tick();
+            if (bar.is_completed())
+            break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    }
+
+    {
+        // Russian
+        indicators::ProgressBar bar{
+            indicators::option::BarWidth{50},
+            indicators::option::Start{"["},
+            indicators::option::Fill{"Потрясающие"},
+            indicators::option::Remainder{" "},
+            indicators::option::End{" ]"},
+            indicators::option::PostfixText{"Russian"},
+            indicators::option::ForegroundColor{indicators::Color::red},
+            indicators::option::FontStyles{
+                std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}
+        };
+
+        // Update bar state
+        while (true) {
+            bar.tick();
+            if (bar.is_completed())
+            break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    }
+
+    {
+        // Greek
+        indicators::ProgressBar bar{
+            indicators::option::BarWidth{50},
+            indicators::option::Start{"["},
+            indicators::option::Fill{"Φοβερός"},
+            indicators::option::Remainder{" "},
+            indicators::option::End{" ]"},
+            indicators::option::PostfixText{"Greek"},
+            indicators::option::ForegroundColor{indicators::Color::cyan},
+            indicators::option::FontStyles{
+                std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}
+        };
+
+        // Update bar state
+        while (true) {
+            bar.tick();
+            if (bar.is_completed())
+            break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    }
+
+    {
+        // Chinese
+        indicators::ProgressBar bar{
+            indicators::option::BarWidth{50},
+            indicators::option::Start{"["},
+            indicators::option::Fill{"太棒了"},
+            indicators::option::Remainder{" "},
+            indicators::option::End{" ]"},
+            indicators::option::PostfixText{"Chinese"},
+            indicators::option::ForegroundColor{indicators::Color::green},
+            indicators::option::FontStyles{
+                std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}
+        };
+
+        // Update bar state
+        while (true) {
+            bar.tick();
+            if (bar.is_completed())
+            break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }        
+    }
+
+    {
+        // Emojis
+        indicators::ProgressBar bar{
+            indicators::option::BarWidth{50},
+            indicators::option::Start{"["},
+            indicators::option::Fill{"🔥"},
+            indicators::option::Lead{"🔥"},
+            indicators::option::Remainder{" "},
+            indicators::option::End{" ]"},
+            indicators::option::PostfixText{"Emojis"},
+            indicators::option::ForegroundColor{indicators::Color::white},
+            indicators::option::FontStyles{
+                std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}
+        };
+
+        // Update bar state
+        while (true) {
+            bar.tick();
+            if (bar.is_completed())
+            break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    }
+
+    {
+        // Indeterminate progress bar
+        indicators::IndeterminateProgressBar bar{
+            indicators::option::BarWidth{50},
+            indicators::option::Start{"["},
+            indicators::option::Fill{"✯"},
+            indicators::option::Lead{"載入中"},
+            indicators::option::End{" ]"},
+            indicators::option::PostfixText{"Loading Progress Bar"},
+            indicators::option::ForegroundColor{indicators::Color::yellow},
+            indicators::option::FontStyles{
+                std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}
+        };
+
+        auto job = [&bar]() {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+            bar.mark_as_completed();
+        };
+        std::thread job_completion_thread(job);
+
+        // Update bar state
+        while (!bar.is_completed()) {
+            bar.tick();
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+
+        job_completion_thread.join();
+    }
+
+    indicators::show_console_cursor(true);
+
+  return 0;
+}
+```
+
+## Building Samples
+
+```bash
+git clone https://github.com/p-ranav/indicators
+cd indicators
+mkdir build && cd build
+cmake -DINDICATORS_SAMPLES=ON -DINDICATORS_DEMO=ON ..
+make
+```
+
+## Generating Single Header
+
+```bash
+python3 utils/amalgamate/amalgamate.py -c single_include.json -s .
 ```
 
 ## Contributing
