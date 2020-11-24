@@ -1,22 +1,23 @@
 #include <chrono>
+#include <indicators/cursor_control.hpp>
 #include <indicators/progress_bar.hpp>
 #include <thread>
 
 int main() {
 
   // Hide cursor
-  std::cout << "\e[?25l";
+  indicators::show_console_cursor(false);
 
-  indicators::ProgressBar bar{
-      indicators::option::BarWidth{50},
-      indicators::option::Start{"["},
-      indicators::option::Fill{"■"},
-      indicators::option::Lead{"■"},
-      indicators::option::Remainder{"-"},
-      indicators::option::End{" ]"},
-      indicators::option::PostfixText{"Loading dependency 1/4"},
-      indicators::option::ForegroundColor{indicators::Color::cyan},
-  };
+  indicators::ProgressBar bar{indicators::option::BarWidth{50},
+                              indicators::option::Start{"["},
+                              indicators::option::Fill{"■"},
+                              indicators::option::Lead{"■"},
+                              indicators::option::Remainder{"-"},
+                              indicators::option::End{" ]"},
+                              indicators::option::PostfixText{"Loading dependency 1/4"},
+                              indicators::option::ForegroundColor{indicators::Color::cyan},
+                              indicators::option::FontStyles{
+                                  std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
 
   // Update bar state
   bar.set_progress(10); // 10% done
@@ -42,10 +43,8 @@ int main() {
 
   bar.set_progress(100); // all done
 
-  bar.mark_as_completed();
-
   // Show cursor
-  std::cout << "\e[?25h";
+  indicators::show_console_cursor(true);
 
   return 0;
 }
